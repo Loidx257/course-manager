@@ -30,8 +30,22 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (commit only the safe example)
 .env*
+!.env.example
+
+# local application data
+/prisma/*.db
+/prisma/*.db-*
+
+# generated release and local-only launch artifacts
+/release/
+/*.lnk
+/start-server - 副本.bat
+
+# local source archives and backups
+/*.zip
+/*.tar.gz
 
 # vercel
 .vercel

@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String   @id @default(cuid())
+  name                   String
+  phone                  String?  @unique
+  email                  String?
+  passwordHash           String
+  timezone               String   @default("Asia/Shanghai")
+  defaultReminderMinutes Int      @default(1200)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  students      Student[]
+  courseTypes   CourseType[]
+  schedules     Schedule[]
+  feeRecords    FeeRecord[]
+  settlements   Settlement[]
+  operationLogs OperationLog[]
+  settings      SystemSetting?
+}
+
+model Student {
+  id                 String    @id @default(cuid())
+  userId             String
+  name               String
+  nickname           String?
+  phone              String?
+  wechat             String?
+  examYear           Int?
+  targetUniversity   String?
+  targetMajor        String?
+  examSubjects       String?
+  totalCourseMinutes Int?
+  status             String    @default("active")
+  notes              String?
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id])
+  studentCourses StudentCourse[]
+  schedules      Schedule[]
+  settlements    Settlement[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model StudentCourse {
+  id              String   @id @default(cuid())
+  studentId       String
+  courseTypeId    String
+  defaultPrice    Float?
+  defaultDuration Int?
+  billingUnit     String?
+  createdAt       DateTime @default(now())
+
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseType CourseType @relation(fields: [courseTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseTypeId])
+}
+
+model CourseType {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  subject         String?
+  format          String   @default("one_on_one")
+  defaultDuration Int?
+  billingMethod   String   @default("per_hour")
+  billingUnit     String?
+  unitMinutes     Int?
+  defaultPrice    Float?
+  color           String   @default("#3B82F6")
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id])
+  studentCourses StudentCourse[]
+  schedules      Schedule[]
+
+  @@index([userId])
+}
+
+model Schedule {
+  id                String   @id @default(cuid())
+  userId            String
+  studentId         String
+  courseTypeId      String
+  plannedDate       String
+  startTime         String
+  endTime           String
+  plannedDuration   Int
+  repeatRule        String?
+  repeatGroupId     String?
+  location          String?
+  onlineLink        String?
+  notes             String?
+  reminderEnabled   Boolean  @default(true)
+  status            String   @default("pending")
+  cancelReason      String?
+  rescheduledFromId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id])
+  student       Student        @relation(fields: [studentId], references: [id])
+  courseType    CourseType     @relation(fields: [courseTypeId], references: [id])
+  courseRecord  CourseRecord?
+  feeRecord     FeeRecord?
+  reminderTasks ReminderTask[]
+
+  @@index([userId])
+  @@index([studentId])
+  @@index([plannedDate])
+  @@index([status])
+}
+
+model CourseRecord {
+  id              String   @id @default(cuid())
+  scheduleId      String   @unique
+  actualStartTime String?
+  actualEndTime   String?
+  actualDuration  Int?
+  content         String?
+  feedback        String?
+  homework        String?
+  attachments     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+}
+
+model FeeRecord {
+  id               String   @id @default(cuid())
+  scheduleId       String   @unique
+  userId           String
+  calculatedAmount Float    @default(0)
+  adjustedAmount   Float?
+  finalAmount      Float    @default(0)
+  adjustmentReason String?
+  billingRule      String?
+  settlementStatus String   @default("unsettled")
+  settlementId     String?
+  needsPrice       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  schedule   Schedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id])
+  settlement Settlement? @relation(fields: [settlementId], references: [id])
+
+  @@index([userId])
+  @@index([settlementStatus])
+  @@index([settlementId])
+}
+
+model ReminderTask {
+  id         String    @id @default(cuid())
+  scheduleId String
+  remindAt   DateTime
+  channel    String    @default("in_app")
+  status     String    @default("pending")
+  failReason String?
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([remindAt])
+  @@index([status])
+}
+
+model Settlement {
+  id             String   @id @default(cuid())
+  userId         String
+  studentId      String?
+  periodStart    DateTime
+  periodEnd      DateTime
+  expectedAmount Float    @default(0)
+  actualAmount   Float    @default(0)
+  status         String   @default("draft")
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  student    Student?    @relation(fields: [studentId], references: [id])
+  feeRecords FeeRecord[]
+
+  @@index([userId])
+  @@index([studentId])
+}
+
+model OperationLog {
+  id          String   @id @default(cuid())
+  userId      String
+  targetType  String
+  targetId    String
+  operation   String
+  beforeValue String?
+  afterValue  String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  defaultBillingBasis    String   @default("actual")
+  minBillingUnit         Int      @default(15)
+  roundingMethod         String   @default("exact")
+  minBillingDuration     Int?
+  overtimeHandling       String   @default("actual")
+  defaultReminderMinutes Int      @default(1200)
+  reminderTime           String   @default("20:00")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
