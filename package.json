@@ -1,6 +1,7 @@
 {
   "name": "course-manager",
   "version": "0.1.0",
+  "description": "一款基于 Next.js、Prisma 和 SQLite 的课程管理系统，支持学生档案、课程排期、课时进度、费用结算与数据统计。",
   "private": true,
   "scripts": {
     "dev": "next dev",
